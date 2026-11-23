@@ -8,6 +8,6 @@ split -n l/$TOTAL -d fullport_ips.txt fp_ 2>/dev/null || split -n l/$TOTAL fullp
 F=$(ls fp_* | sed -n "$(( SHARD + 1 ))p")
 echo "[*] shard $SHARD: $(wc -l < $F) IPs, full port 1-10000"
 
-sudo masscan -iL "$F" -p1-10000 --rate 50000 --wait 0 \
+sudo masscan -iL "$F" -p1-10000 --rate 25000 --wait 0 \
   -oJ fp_results_$SHARD.json 2>&1 | tail -2 || true
 wc -c fp_results_$SHARD.json 2>/dev/null || echo "no hits"
