@@ -1,0 +1,30 @@
+name: hetzner-other-hunt
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3 python3-pip
+      - name: Hunt
+        run: bash hunt_ho.sh ${{ matrix.shard }}
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ho-${{ matrix.shard }}
+          path: ho_hits_${{ matrix.shard }}.jsonl
+          if-no-files-found: ignore

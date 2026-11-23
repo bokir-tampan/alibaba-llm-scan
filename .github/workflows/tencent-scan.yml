@@ -1,0 +1,32 @@
+name: tencent-scan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq masscan python3
+      - name: Scan
+        run: |
+          cp tencent_consolidated.txt prefixes.txt
+          bash scan_provider.sh ${{ matrix.shard }} 20
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: tencent-${{ matrix.shard }}
+          path: results_${{ matrix.shard }}.json
+          if-no-files-found: ignore
