@@ -1,0 +1,43 @@
+name: wave3-probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -q aiohttp
+      - name: Unpack chunk
+        run: tar xzf w3/w3_0${{ matrix.shard }}.tgz
+      - name: Probe /v1/models
+        env:
+          CONC: "300"
+          TO: "2.0"
+        run: python3 probe_fast.py w3_0${{ matrix.shard }} wave3_hits_${{ matrix.shard }}.jsonl
+      - name: Commit results
+        run: |
+          git config user.name "scan-bot"
+          git config user.email "scan-bot@users.noreply.github.com"
+          mkdir -p w3_art/w3-${{ matrix.shard }}
+          cp wave3_hits_${{ matrix.shard }}.jsonl w3_art/w3-${{ matrix.shard }}/ || true
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && \
+            git add w3_art/w3-${{ matrix.shard }} && \
+            git commit -m "wave3 shard ${{ matrix.shard }} hits" && \
+            git push origin main && break || sleep $((RANDOM % 20 + 5))
+          done
