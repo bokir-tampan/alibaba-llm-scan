@@ -36,8 +36,8 @@ jobs:
           mkdir -p w3_art/w3-${{ matrix.shard }}
           cp wave3_hits_${{ matrix.shard }}.jsonl w3_art/w3-${{ matrix.shard }}/ || true
           for i in 1 2 3 4 5; do
-            git pull --rebase origin main && \
+            git pull --rebase origin master && \
             git add w3_art/w3-${{ matrix.shard }} && \
             git commit -m "wave3 shard ${{ matrix.shard }} hits" && \
-            git push origin main && break || sleep $((RANDOM % 20 + 5))
+            git push origin master && break || sleep $((RANDOM % 20 + 5))
           done
