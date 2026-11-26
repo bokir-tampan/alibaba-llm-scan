@@ -1,0 +1,53 @@
+name: wave10-probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [wave10]
+    paths: ['w10/**']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -q aiohttp
+      - name: Unpack chunk
+        run: tar xzf w10/w10_0${{ matrix.shard }}.tgz
+      - name: Probe /v1/models
+        env:
+          CONC: "300"
+          TO: "2.0"
+        run: python3 probe_fast.py w10_0${{ matrix.shard }} wave10_hits_${{ matrix.shard }}.jsonl
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w10-hits-${{ matrix.shard }}
+          path: wave10_hits_${{ matrix.shard }}.jsonl
+          if-no-files-found: ignore
+      - name: Commit results
+        run: |
+          git config user.name "scan-bot"
+          git config user.email "scan-bot@users.noreply.github.com"
+          BR="wave10"
+          mkdir -p w10_art/w10-${{ matrix.shard }}
+          cp wave10_hits_${{ matrix.shard }}.jsonl w10_art/w10-${{ matrix.shard }}/ || true
+          for i in 1 2 3 4 5 6 7 8; do
+            git pull --rebase origin "$BR" && \
+            git add w10_art/w10-${{ matrix.shard }} && \
+            (git diff --cached --quiet || git commit -m "wave10 shard ${{ matrix.shard }} hits") && \
+            git push origin "HEAD:$BR" && break || sleep $((RANDOM % 25 + 5))
+          done
