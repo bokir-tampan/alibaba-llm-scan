@@ -1,0 +1,58 @@
+name: wave12-probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0,1,2,3,4,5,6,7]
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: wave12
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install -q aiohttp
+
+      - name: Unpack chunk
+        run: tar xzf w12/w12_0${{ matrix.shard }}.tgz
+
+      - name: Probe /v1/models
+        env:
+          CONC: "300"
+          TO: "2.0"
+        run: python3 probe_fast.py w12_0${{ matrix.shard }} wave12_hits_${{ matrix.shard }}.jsonl
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: w12-hits-${{ matrix.shard }}
+          path: wave12_hits_${{ matrix.shard }}.jsonl
+          if-no-files-found: ignore
+
+      - name: Commit results to wave12 branch
+        run: |
+          git config user.name "scan-bot"
+          git config user.email "scan-bot@users.noreply.github.com"
+          BR="wave12"
+          mkdir -p w12_art/w12-${{ matrix.shard }}
+          cp wave12_hits_${{ matrix.shard }}.jsonl w12_art/w12-${{ matrix.shard }}/ || true
+          for i in 1 2 3 4 5 6 7 8; do
+            git pull --rebase origin "$BR" && \
+            git add w12_art/w12-${{ matrix.shard }} && \
+            (git diff --cached --quiet || git commit -m "wave12 shard ${{ matrix.shard }} hits") && \
+            git push origin "HEAD:$BR" && break || sleep $((RANDOM % 25 + 5))
+          done
