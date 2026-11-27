@@ -27,7 +27,7 @@ jobs:
         run: pip install -q aiohttp
 
       - name: Unpack chunk
-        run: tar xzf w11/w11_0${{ matrix.shard }}.tgz
+        run: tar xzf w11/w11_0${{ matrix.shard }}.tgz --strip-components=1
 
       - name: Probe /v1/models
         env:
